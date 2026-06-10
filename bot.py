@@ -1,4 +1,4 @@
-os
+import os
 import random
 import requests
 from PIL import Image, ImageDraw, ImageFont
