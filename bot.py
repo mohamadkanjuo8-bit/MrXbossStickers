@@ -1,4 +1,4 @@
-import os
+os
 import random
 import requests
 from PIL import Image, ImageDraw, ImageFont
@@ -10,82 +10,67 @@ TOKEN = os.environ.get("BOT_TOKEN")
 
 STATES = {
     "غاضب": {
-        "urls": [
-            "https://i.imgur.com/angry1.jpg",
-            "https://i.imgur.com/angry2.jpg",
-        ],
-        "texts": ["أنا غاضب جداً 😡", "لا تقربني هلق 😡", "اخرج من وجهي 😡"]
+        "url": "https://i.imgur.com/JzEEqHQ.jpeg",
+        "texts": ["أنا غاضب جداً 😡", "لا تقربني 😡", "اخرج من وجهي 😡"]
     },
     "فرحان": {
-        "urls": [
-            "https://i.imgur.com/happy1.jpg",
-            "https://i.imgur.com/happy2.jpg",
-        ],
+        "url": "https://i.imgur.com/WpCKCGj.jpeg",
         "texts": ["اليوم أحلى يوم 😄", "أنا فرحان كتير 😄", "الحياة حلوة 😄"]
     },
     "حزين": {
-        "urls": [
-            "https://i.imgur.com/sad1.jpg",
-            "https://i.imgur.com/sad2.jpg",
-        ],
+        "url": "https://i.imgur.com/Gj6CYHT.jpeg",
         "texts": ["قلبي تعبان 😢", "ما في أحد يفهمني 😢", "حياتي صعبة 😢"]
     },
     "متفاجئ": {
-        "urls": [
-            "https://i.imgur.com/surprised1.jpg",
-            "https://i.imgur.com/surprised2.jpg",
-        ],
+        "url": "https://i.imgur.com/Zj6CYHT.jpeg",
         "texts": ["شو هاد؟! 😲", "ما توقعت هيك 😲", "لا صحيح؟! 😲"]
     },
     "نايم": {
-        "urls": [
-            "https://i.imgur.com/sleep1.jpg",
-            "https://i.imgur.com/sleep2.jpg",
-        ],
+        "url": "https://i.imgur.com/Aj6CYHT.jpeg",
         "texts": ["زzzz 😴", "لا تزعجوني 😴", "بدي أنام بس 😴"]
     },
 }
 
-user_last_state = {}
+user_last = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "أهلاً! 😄\nاكتب حالتك مثلاً:\nغاضب، فرحان، حزين، متفاجئ، نايم\n\nأو اكتب 'غير: نصك هون' لتغيير الكتابة"
-    )
+    await update.message.reply_text("أهلاً! 😄\nاكتب: غاضب، فرحان، حزين، متفاجئ، نايم\nأو: غير: نصك هون")
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
-    user_id = update.message.from_user.id
+    uid = update.message.from_user.id
 
     if text.startswith("غير:"):
         new_text = text.replace("غير:", "").strip()
-        if user_id in user_last_state:
-            state = user_last_state[user_id]
-            await send_image_with_text(update, state, new_text)
+        if uid in user_last:
+            await send_img(update, user_last[uid], new_text)
         else:
-            await update.message.reply_text("اكتب حالة أول مثلاً: غاضب 😄")
+            await update.message.reply_text("اكتب حالة أول 😄")
         return
 
     if text in STATES:
-        user_last_state[user_id] = text
-        auto_text = random.choice(STATES[text]["texts"])
-        await send_image_with_text(update, text, auto_text)
+        user_last[uid] = text
+        t = random.choice(STATES[text]["texts"])
+        await send_img(update, text, t)
     else:
         await update.message.reply_text("اكتب: غاضب، فرحان، حزين، متفاجئ، أو نايم 😄")
 
-async def send_image_with_text(update, state, text):
-    url = random.choice(STATES[state]["urls"])
-    response = requests.get(url)
-    img = Image.open(BytesIO(response.content)).convert("RGB")
-    draw = ImageDraw.Draw(img)
-    font = ImageFont.load_default()
-    draw.text((20, 20), text, fill="white", font=font)
-    output = BytesIO()
-    img.save(output, format="JPEG")
-    output.seek(0)
-    await update.message.reply_photo(photo=output)
+async def send_img(update, state, text):
+    try:
+        url = STATES[state]["url"]
+        r = requests.get(url, timeout=10)
+        img = Image.open(BytesIO(r.content)).convert("RGB")
+        draw = ImageDraw.Draw(img)
+        font = ImageFont.load_default()
+        draw.text((20, 20), text, fill="white", font=font)
+        out = BytesIO()
+        img.save(out, format="JPEG")
+        out.seek(0)
+        await update.message.reply_photo(photo=out)
+    except:
+        await update.message.reply_text(text)
 
 app = ApplicationBuilder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
 app.run_polling()
